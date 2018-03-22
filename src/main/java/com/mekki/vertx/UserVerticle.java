@@ -9,6 +9,8 @@ import io.vertx.core.json.Json;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Date;
+
 import static com.mekki.vertx.App.jdbcConfig;
 
 /**
@@ -33,12 +35,33 @@ public class UserVerticle extends AbstractVerticle {
                 });
             }
         );
+
+        App.router.post("/user").handler(routingContext -> {
+                add(routingContext.request().params(), hr -> {
+                    routingContext.response().end(hr);
+                });
+            }
+        );
+
+        App.router.put("/user/:id").handler(routingContext -> {
+                update(routingContext.request().params(), hr -> {
+                    routingContext.response().end(hr);
+                });
+            }
+        );
+
+        App.router.delete("/user/:id").handler(routingContext -> {
+                delete(routingContext.request().params(), hr -> {
+                    routingContext.response().end(hr);
+                });
+            }
+        );
     }
 
     private void list(MultiMap params, Handler<String> handler) {
         User user = new User();
 
-        DefaultDaoImpl.createTransactional(vertx, jdbcConfig, th ->
+        DefaultDaoImpl.create(vertx, jdbcConfig, th ->
             th.select(user, z ->
                 handler.handle(Json.encode(z))
             )
@@ -49,10 +72,75 @@ public class UserVerticle extends AbstractVerticle {
         User user = new User();
 
         user.setId(Integer.valueOf(params.get("id")));
-        DefaultDaoImpl.createTransactional(vertx, jdbcConfig, th ->
+
+        DefaultDaoImpl.create(vertx, jdbcConfig, th ->
             th.select(user, z ->
                 handler.handle(Json.encode(z.size() > 0 ? z.get(0) : null))
             )
+        );
+    }
+
+    private void add(MultiMap params, Handler<String> handler) {
+        User user = new User();
+
+        user.setOpenId(params.get("openId"));
+        user.setSpcCardNum(params.get("spcCardNum"));
+        user.setSubscribeTime(new Date());
+        user.setStatus(1);
+
+        DefaultDaoImpl.createTransactional(vertx, jdbcConfig, th ->
+            th.insert(user, z -> {
+                user.setStatus(1);
+
+                th.update(user, u -> {
+                    th.commit(v -> {
+                        th.close(c -> {
+                            handler.handle(Json.encode(user));
+                        });
+                    });
+                });
+            })
+        );
+    }
+
+    private void update(MultiMap params, Handler<String> handler) {
+        User user = new User();
+
+        user.setId(Integer.valueOf(params.get("id")));
+
+        DefaultDaoImpl.create(vertx, jdbcConfig, th ->
+            th.select(user, s -> {
+                if (s.size() == 0) {
+                    handler.handle("id " + user.getId() + " does not exists.");
+                } else {
+                    User one = s.get(0);
+
+                    one.setOpenId(params.get("openId"));
+                    one.setSpcCardNum(params.get("spcCardNum"));
+                    th.update(one, z -> {
+                        handler.handle(Json.encode(one));
+                    });
+                }
+            })
+        );
+    }
+
+    private void delete(MultiMap params, Handler<String> handler) {
+        User user = new User();
+
+        user.setId(Integer.valueOf(params.get("id")));
+
+        DefaultDaoImpl.create(vertx, jdbcConfig, th ->
+            th.select(user, s -> {
+                if (s.size() == 0) {
+                    handler.handle("id " + user.getId() + " does not exists.");
+                } else {
+                    User one = s.get(0);
+                    th.delete(one, z -> {
+                        handler.handle(Json.encode(z));
+                    });
+                }
+            })
         );
     }
 }
