@@ -258,7 +258,7 @@ public class EntityDesc<T> {
                         String condition = convert(v);
                         return "`" + columnName + "` = '" + condition + "' ";
                     } else {
-                        return "`" + columnName + "` IS NULL ";
+                        return "`" + columnName + "` = NULL ";
 
                     }
                 } catch (Exception e) {
