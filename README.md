@@ -43,7 +43,7 @@ SimpleDao for Vert.x project
 ### CURD with transaction support
 
 ```java
-    Dao.createTransactional(vertx, jdbcConfig,dao ->
+    Dao.createTransactional(vertx, jdbcConfig, dao ->
 
         User user = new User();
         user.setName("maki");
