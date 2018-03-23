@@ -1,4 +1,4 @@
-package com.mekki.vertx.dao;
+package com.mekki.vertx.dao.support;
 
 import io.vertx.ext.sql.UpdateResult;
 import org.slf4j.Logger;
@@ -18,9 +18,9 @@ import java.util.stream.Stream;
  * Created by Mekki on 2018/3/21.
  * 实体->SQL工具类
  */
-public class EntityDesc<T> {
+public class EntitySQLSupport<T> {
 
-    private static Logger logger = LoggerFactory.getLogger(EntityDesc.class);
+    private static Logger logger = LoggerFactory.getLogger(EntitySQLSupport.class);
 
     private Class<T> entityClass;
 
@@ -34,7 +34,7 @@ public class EntityDesc<T> {
 
     private Map<String, String> columns;
 
-    public EntityDesc(Class<T> clazz) {
+    public EntitySQLSupport(Class<T> clazz) {
         entityClass = clazz;
 
         if (entityClass.getDeclaredFields().length == 0) {
@@ -130,8 +130,8 @@ public class EntityDesc<T> {
     /**
      * 回写主键值
      *
-     * @param item
-     * @param result
+     * @param item   实体
+     * @param result 更新结果
      */
     public void rewritePkValue(T item, UpdateResult result) {
 
@@ -156,7 +156,10 @@ public class EntityDesc<T> {
      * @return
      */
     public String buildSelectSql(T item) {
+        return selectAllSql + buildWhereCondition(item) + ";";
+    }
 
+    private String buildWhereCondition(T item) {
         Optional<String> whereName = columns.entrySet().stream().map(
             entry -> {
                 try {
@@ -179,18 +182,27 @@ public class EntityDesc<T> {
         ).filter(Objects::nonNull)
             .reduce((l, r) -> l + " AND " + r);
 
-        return selectAllSql +
-            (whereName.map(s -> " WHERE " + s).orElse("")) +
-            ";";
+        return whereName.map(s -> " WHERE " + s).orElse("");
+    }
+
+    /**
+     * 构造查询数量语句
+     *
+     * @param item
+     * @return
+     */
+    public String buildSelectCountSql(T item) {
+        return "SELECT COUNT(*) AS count FROM `" + tableName + "`" + buildWhereCondition(item) + ";";
     }
 
     /**
      * 构造新增语句
      *
-     * @param item
+     * @param item             实体
+     * @param includeNullField 是否包括NULL字段
      * @return
      */
-    public String buildInsertSql(T item) {
+    public String buildInsertSql(T item, boolean includeNullField) {
 
         StringBuilder columnNames = new StringBuilder();
         StringBuilder values = new StringBuilder();
@@ -209,6 +221,9 @@ public class EntityDesc<T> {
                     } else if (field.getAnnotation(GeneratedValue.class) != null) {
                         columnNames.append(",`").append(columnName).append("`");
                         values.append(", 0");
+                    } else if (includeNullField) {
+                        columnNames.append(",`").append(columnName).append("`");
+                        values.append(", NULL");
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -229,7 +244,7 @@ public class EntityDesc<T> {
      * @param item
      * @return
      */
-    public String buildUpdateSql(T item) {
+    public String buildUpdateSql(T item, boolean includeNullField) {
 
         pkField.setAccessible(true);
         Object o = null;
@@ -257,9 +272,8 @@ public class EntityDesc<T> {
                     if (v != null) {
                         String condition = convert(v);
                         return "`" + columnName + "` = '" + condition + "' ";
-                    } else {
+                    } else if (includeNullField) {
                         return "`" + columnName + "` = NULL ";
-
                     }
                 } catch (Exception e) {
                     e.printStackTrace();
