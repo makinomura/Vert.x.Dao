@@ -4,6 +4,7 @@ import java.util.List;
 
 /**
  * Created by Mekki on 2018/3/23.
+ * 分页信息
  */
 public class PageSupport<E> {
     private Long total;
