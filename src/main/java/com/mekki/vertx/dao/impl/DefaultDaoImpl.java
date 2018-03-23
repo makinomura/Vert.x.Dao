@@ -31,10 +31,6 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
 
     private static Logger logger = LoggerFactory.getLogger(DefaultDaoImpl.class);
 
-    /**
-     * SQL类缓存
-     */
-    private static Map<String, EntitySQLSupport> sqlSupportCache = new HashMap<>();
     private JsonObject jdbcConfig;
     private Vertx vertx;
     private JDBCClientImpl sqlClient;
@@ -53,14 +49,6 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
 
     private static <E> List<E> convert(ResultSet rs, Class<E> clazz) {
         return rs.getRows().stream().map(i -> convert(i, clazz)).collect(Collectors.toList());
-    }
-
-    private static <T> EntitySQLSupport<T> getSQLSupport(Class<T> clazz) {
-        if (!sqlSupportCache.containsKey(clazz.getName())) {
-            sqlSupportCache.put(clazz.getName(), new EntitySQLSupport(clazz));
-        }
-
-        return sqlSupportCache.get(clazz.getName());
     }
 
     /**
@@ -84,7 +72,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
     @Override
     public <E> void select(E e, Handler<List<E>> handler) {
 
-        String sql = getSQLSupport((Class<E>) e.getClass()).buildSelectSql(e);
+        String sql = EntitySQLSupport.of((Class<E>) e.getClass()).buildSelectSql(e);
         logger.info("select: {}", sql);
 
         doQuery(sql, rs -> handler.handle(convert(rs, (Class<E>) e.getClass())));
@@ -99,7 +87,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void insert(E e, Handler<Integer> handler) {
-        EntitySQLSupport<E> sqlSupport = getSQLSupport((Class<E>) e.getClass());
+        EntitySQLSupport<E> sqlSupport = EntitySQLSupport.of((Class<E>) e.getClass());
 
         String sql = sqlSupport.buildInsertSql(e, true);
         logger.info("insert: {}", sql);
@@ -119,7 +107,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void update(E e, Handler<Integer> handler) {
-        EntitySQLSupport<E> sqlSupport = getSQLSupport((Class<E>) e.getClass());
+        EntitySQLSupport<E> sqlSupport = EntitySQLSupport.of((Class<E>) e.getClass());
 
         String sql = sqlSupport.buildUpdateSql(e, true);
         logger.info("update: {}", sql);
@@ -136,7 +124,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void delete(E e, Handler<Integer> handler) {
-        EntitySQLSupport<E> sqlSupport = getSQLSupport((Class<E>) e.getClass());
+        EntitySQLSupport<E> sqlSupport = EntitySQLSupport.of((Class<E>) e.getClass());
 
         String sql = sqlSupport.buildDeleteSql(e);
         logger.info("delete: {}", sql);
@@ -179,7 +167,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void selectCount(E e, Handler<Long> handler) {
-        String sql = getSQLSupport((Class<E>) e.getClass()).buildSelectCountSql(e);
+        String sql = EntitySQLSupport.of((Class<E>) e.getClass()).buildSelectCountSql(e);
         logger.info("selectCount: {}", sql);
 
         doQuery(sql, rs -> handler.handle(rs.getRows().get(0).getLong("count")));
@@ -194,7 +182,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void insertSelective(E e, Handler<Integer> handler) {
-        EntitySQLSupport<E> sqlSupport = getSQLSupport((Class<E>) e.getClass());
+        EntitySQLSupport<E> sqlSupport = EntitySQLSupport.of((Class<E>) e.getClass());
 
         String sql = sqlSupport.buildInsertSql(e, false);
         logger.info("insertSelective: {}", sql);
@@ -214,7 +202,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
      */
     @Override
     public <E> void updateSelective(E e, Handler<Integer> handler) {
-        EntitySQLSupport<E> sqlSupport = getSQLSupport((Class<E>) e.getClass());
+        EntitySQLSupport<E> sqlSupport = EntitySQLSupport.of((Class<E>) e.getClass());
 
         String sql = sqlSupport.buildUpdateSql(e, false);
         logger.info("updateSelective: {}", sql);
@@ -242,7 +230,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
                 ps.setElements(new ArrayList<>());
                 handler.handle(ps);
             } else {
-                String sql = getSQLSupport((Class<E>) e.getClass()).buildPageSql(e, ps.getStartRow(), ps.getSize(), ps.getOrderBy());
+                String sql = EntitySQLSupport.of((Class<E>) e.getClass()).buildPageSql(e, ps.getStartRow(), ps.getSize(), ps.getOrderBy());
                 logger.info("select page: {}", sql);
 
                 doQuery(sql, rs -> {

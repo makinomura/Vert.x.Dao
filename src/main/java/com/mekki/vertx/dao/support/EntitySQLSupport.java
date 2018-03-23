@@ -7,10 +7,7 @@ import org.slf4j.LoggerFactory;
 import javax.persistence.*;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -21,6 +18,11 @@ import java.util.stream.Stream;
 public class EntitySQLSupport<T> {
 
     private static Logger logger = LoggerFactory.getLogger(EntitySQLSupport.class);
+
+    /**
+     * SQL类缓存
+     */
+    private static Map<String, EntitySQLSupport<?>> sqlSupportCache = new HashMap<>();
 
     private Class<T> entityClass;
 
@@ -34,7 +36,7 @@ public class EntitySQLSupport<T> {
 
     private Map<String, String> columns;
 
-    public EntitySQLSupport(Class<T> clazz) {
+    private EntitySQLSupport(Class<T> clazz) {
         entityClass = clazz;
 
         if (entityClass.getDeclaredFields().length == 0) {
@@ -46,6 +48,15 @@ public class EntitySQLSupport<T> {
         resolveColumns();
         resolveSelectSql();
         logger.info("built {}", clazz.getName());
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <E> EntitySQLSupport<E> of(Class<E> clazz) {
+        if (!sqlSupportCache.containsKey(clazz.getName())) {
+            sqlSupportCache.put(clazz.getName(), new EntitySQLSupport<>(clazz));
+        }
+
+        return (EntitySQLSupport<E>) sqlSupportCache.get(clazz.getName());
     }
 
     /**
