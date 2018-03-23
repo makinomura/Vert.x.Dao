@@ -22,13 +22,22 @@ public class PageSupport<E> {
 
     private Integer endRow;
 
+    private String orderBy;
+
     public PageSupport(Integer page, Integer size) {
         this.page = page;
         this.size = size;
 
-//        if (page <= 0 || size <= 0) {
-//            throw new
-//        }
+        if (page <= 0 || size <= 0) {
+            throw new RuntimeException("Wrong arguments");
+        }
+
+        startRow = (page - 1) * size;
+    }
+
+    public PageSupport(Integer page, Integer size, String orderBy) {
+        this(page, size);
+        this.orderBy = orderBy;
     }
 
     public Long getTotal() {
@@ -93,5 +102,28 @@ public class PageSupport<E> {
 
     public void setEndRow(Integer endRow) {
         this.endRow = endRow;
+    }
+
+    public String getOrderBy() {
+        return orderBy;
+    }
+
+    public void setOrderBy(String orderBy) {
+        this.orderBy = orderBy;
+    }
+
+    @Override
+    public String toString() {
+        return "PageSupport{" +
+            "total=" + total +
+            ", count=" + count +
+            ", elements={" + (elements != null ? elements.stream().map(Object::toString).reduce(String::concat).orElse("") : "") +
+            "}, pageNum=" + pageNum +
+            ", page=" + page +
+            ", size=" + size +
+            ", startRow=" + startRow +
+            ", endRow=" + endRow +
+            ", orderBy='" + orderBy + '\'' +
+            '}';
     }
 }

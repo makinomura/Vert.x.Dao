@@ -1,18 +1,22 @@
 package com.mekki.vertx.dao.impl;
 
-import com.mekki.vertx.dao.support.AbstractSQLConnectionSupport;
 import com.mekki.vertx.dao.EnhancedDao;
-import com.mekki.vertx.dao.support.EntitySQLSupport;
+import com.mekki.vertx.dao.PageDao;
 import com.mekki.vertx.dao.SimpleCurdDao;
+import com.mekki.vertx.dao.support.AbstractSQLConnectionSupport;
+import com.mekki.vertx.dao.support.EntitySQLSupport;
+import com.mekki.vertx.dao.support.PageSupport;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.jdbc.JDBCClient;
 import io.vertx.ext.jdbc.impl.JDBCClientImpl;
+import io.vertx.ext.sql.ResultSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,7 +27,7 @@ import java.util.stream.Collectors;
  * DAO层实现
  */
 @SuppressWarnings("unchecked")
-public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements SimpleCurdDao, EnhancedDao {
+public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements SimpleCurdDao, EnhancedDao, PageDao {
 
     private static Logger logger = LoggerFactory.getLogger(DefaultDaoImpl.class);
 
@@ -45,6 +49,10 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
 
     private static <E> E convert(JsonObject obj, Class<E> clazz) {
         return Json.decodeValue(obj.toString(), clazz);
+    }
+
+    private static <E> List<E> convert(ResultSet rs, Class<E> clazz) {
+        return rs.getRows().stream().map(i -> convert(i, clazz)).collect(Collectors.toList());
     }
 
     private static <T> EntitySQLSupport<T> getSQLSupport(Class<T> clazz) {
@@ -79,9 +87,7 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
         String sql = getSQLSupport((Class<E>) e.getClass()).buildSelectSql(e);
         logger.info("select: {}", sql);
 
-        doQuery(sql, rs -> handler.handle(rs.getRows().stream()
-            .map(i -> convert(i, (Class<E>) e.getClass()))
-            .collect(Collectors.toList())));
+        doQuery(sql, rs -> handler.handle(convert(rs, (Class<E>) e.getClass())));
     }
 
     /**
@@ -214,5 +220,41 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
         logger.info("updateSelective: {}", sql);
 
         doUpdate(sql, ur -> handler.handle(ur.getUpdated()));
+    }
+
+    /**
+     * 分页
+     *
+     * @param e       实体
+     * @param ps      分页对象
+     * @param handler 分页结果
+     * @param <E>     实体类型
+     */
+    @Override
+    public <E> void select(E e, PageSupport<E> ps, Handler<PageSupport<E>> handler) {
+        selectCount(e, count -> {
+            ps.setTotal(count);
+
+            if (count == 0 || count <= ps.getStartRow()) {
+                ps.setCount(0);
+                ps.setEndRow(0);
+
+                ps.setElements(new ArrayList<>());
+                handler.handle(ps);
+            } else {
+                String sql = getSQLSupport((Class<E>) e.getClass()).buildPageSql(e, ps.getStartRow(), ps.getSize(), ps.getOrderBy());
+                logger.info("select page: {}", sql);
+
+                doQuery(sql, rs -> {
+                    List<E> elements = convert(rs, (Class<E>) e.getClass());
+
+                    ps.setCount(elements.size());
+                    ps.setEndRow(ps.getStartRow() + elements.size());
+
+                    ps.setElements(elements);
+                    handler.handle(ps);
+                });
+            }
+        });
     }
 }

@@ -113,7 +113,7 @@ public class EntitySQLSupport<T> {
     private void resolveColumns() {
         columns = Stream.of(entityClass.getDeclaredFields())
             .filter(field -> field.getAnnotation(Transient.class) == null)
-            .collect(Collectors.toMap(this::resolveFieldName, Field::getName));
+            .collect(Collectors.toMap(Field::getName, this::resolveFieldName));
     }
 
     /**
@@ -121,7 +121,7 @@ public class EntitySQLSupport<T> {
      */
     private void resolveSelectSql() {
         String columns = this.columns.entrySet().stream()
-            .map(i -> "`" + i.getKey() + "` AS `" + i.getValue() + "`")
+            .map(i -> "`" + i.getValue() + "` AS `" + i.getKey() + "`")
             .reduce((l, r) -> l + "," + r).orElse("");
 
         selectAllSql = "SELECT " + columns + " FROM `" + tableName + "`";
@@ -163,6 +163,7 @@ public class EntitySQLSupport<T> {
 
     /**
      * 构造Where条件
+     *
      * @param item
      * @return
      */
@@ -170,8 +171,8 @@ public class EntitySQLSupport<T> {
         Optional<String> whereName = columns.entrySet().stream().map(
             entry -> {
                 try {
-                    String columnName = entry.getKey();
-                    String fieldName = entry.getValue();
+                    String fieldName = entry.getKey();
+                    String columnName = entry.getValue();
 
                     Field field = entityClass.getDeclaredField(fieldName);
 
@@ -215,7 +216,7 @@ public class EntitySQLSupport<T> {
         StringBuilder values = new StringBuilder();
 
         columns.forEach(
-            (columnName, fieldName) -> {
+            (fieldName, columnName) -> {
                 try {
                     Field field = entityClass.getDeclaredField(fieldName);
 
@@ -273,8 +274,8 @@ public class EntitySQLSupport<T> {
             entry -> {
                 try {
 
-                    String columnName = entry.getKey();
-                    String fieldName = entry.getValue();
+                    String fieldName = entry.getKey();
+                    String columnName = entry.getValue();
 
                     Field field = entityClass.getDeclaredField(fieldName);
 
@@ -329,8 +330,8 @@ public class EntitySQLSupport<T> {
             entry -> {
                 try {
 
-                    String columnName = entry.getKey();
-                    String fieldName = entry.getValue();
+                    String fieldName = entry.getKey();
+                    String columnName = entry.getValue();
 
                     Field field = entityClass.getDeclaredField(fieldName);
 
@@ -356,7 +357,21 @@ public class EntitySQLSupport<T> {
     }
 
     /**
+     * 构造分页语句
+     *
+     * @param item     实体
+     * @param startRow 开始行数
+     * @param size     分页大小
+     * @param orderBy  排序条件
+     * @return
+     */
+    public String buildPageSql(T item, Integer startRow, Integer size, String orderBy) {
+        return selectAllSql + buildWhereCondition(item) + (orderBy != null ? " ORDER BY " + orderBy : "") + " LIMIT " + startRow + ", " + size + ";";
+    }
+
+    /**
      * 对象转字符串
+     *
      * @param source 对象
      * @return
      */
