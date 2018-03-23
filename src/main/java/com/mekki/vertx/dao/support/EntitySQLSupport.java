@@ -135,17 +135,19 @@ public class EntitySQLSupport<T> {
      */
     public void rewritePkValue(T item, UpdateResult result) {
 
-        pkField.setAccessible(true);
-        try {
-            if (pkField.getType().equals(Integer.class)) {
-                pkField.set(item, result.getKeys().getInteger(0));
-            } else if (pkField.getType().equals(Long.class)) {
-                pkField.set(item, result.getKeys().getLong(0));
-            } else {
-                throw new RuntimeException("cannot rewrite pk value");
+        if (pkField != null) {
+            pkField.setAccessible(true);
+            try {
+                if (pkField.getType().equals(Integer.class)) {
+                    pkField.set(item, result.getKeys().getInteger(0));
+                } else if (pkField.getType().equals(Long.class)) {
+                    pkField.set(item, result.getKeys().getLong(0));
+                } else {
+                    throw new RuntimeException("cannot rewrite pk value");
+                }
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
             }
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
         }
     }
 
@@ -159,6 +161,11 @@ public class EntitySQLSupport<T> {
         return selectAllSql + buildWhereCondition(item) + ";";
     }
 
+    /**
+     * 构造Where条件
+     * @param item
+     * @return
+     */
     private String buildWhereCondition(T item) {
         Optional<String> whereName = columns.entrySet().stream().map(
             entry -> {
@@ -246,6 +253,10 @@ public class EntitySQLSupport<T> {
      */
     public String buildUpdateSql(T item, boolean includeNullField) {
 
+        if (pkField == null) {
+            throw new RuntimeException("update without pk value  is forbidden!");
+        }
+
         pkField.setAccessible(true);
         Object o = null;
         try {
@@ -298,6 +309,10 @@ public class EntitySQLSupport<T> {
      */
     public String buildDeleteSql(T item) {
 
+        if (pkField == null) {
+            throw new RuntimeException("delete without pk value  is forbidden!");
+        }
+
         pkField.setAccessible(true);
         Object o = null;
         try {
@@ -340,6 +355,11 @@ public class EntitySQLSupport<T> {
         return "DELETE FROM  " + tableName + " WHERE " + deleteCondition + ";";
     }
 
+    /**
+     * 对象转字符串
+     * @param source 对象
+     * @return
+     */
     private String convert(Object source) {
         if (source instanceof String) {
             return (String) source;
