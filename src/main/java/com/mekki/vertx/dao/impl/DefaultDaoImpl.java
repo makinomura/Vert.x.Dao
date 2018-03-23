@@ -102,7 +102,6 @@ public class DefaultDaoImpl extends AbstractSQLConnectionSupport implements Simp
             sqlSupport.rewritePkValue(e, ur);
             handler.handle(ur.getUpdated());
         });
-
     }
 
     /**
