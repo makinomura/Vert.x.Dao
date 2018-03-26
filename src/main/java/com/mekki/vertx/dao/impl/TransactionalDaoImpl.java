@@ -1,14 +1,13 @@
 package com.mekki.vertx.dao.impl;
 
 import com.mekki.vertx.dao.TransactionalDao;
+import com.mekki.vertx.dao.support.exception.UnhandledException;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.sql.SQLConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.function.Consumer;
 
 /**
  * Created by Mekki on 2018/3/23.
@@ -22,6 +21,11 @@ public class TransactionalDaoImpl extends DefaultDaoImpl implements Transactiona
 
     private TransactionalDaoImpl(Vertx vertx, JsonObject jdbcConfig) {
         super(vertx, jdbcConfig);
+
+        super.defaultExceptionHandler = ex -> {
+            rollback(ex);
+            throw new UnhandledException(ex);
+        };
     }
 
     /**
@@ -33,6 +37,19 @@ public class TransactionalDaoImpl extends DefaultDaoImpl implements Transactiona
      */
     public static void createTransactional(Vertx vertx, JsonObject jdbcConfig, Handler<TransactionalDaoImpl> handler) {
         new TransactionalDaoImpl(vertx, jdbcConfig).init(handler);
+    }
+
+    /**
+     * 先回滚再调用
+     * @param eh 异常处理回调
+     */
+    @Override
+    public void onException(Handler<Exception> eh) {
+        super.defaultExceptionHandler = ex -> {
+            rollback(ex);
+
+            eh.handle(ex);
+        };
     }
 
     /**
@@ -56,19 +73,11 @@ public class TransactionalDaoImpl extends DefaultDaoImpl implements Transactiona
 
     /**
      * 需要手动关闭
+     *
      * @param connection SQL连接
      */
     @Override
-    protected void closeSQLConnectionAfterExecute(SQLConnection connection) {}
-
-    @Override
-    protected <E> void closeSQLConnectionOnException(Consumer<E> action, E handler, SQLConnection connection) {
-        try {
-            action.accept(handler);
-        } catch (Exception ex) {
-            rollback(ex);
-            throw new RuntimeException(ex);
-        }
+    protected void closeSQLConnectionAfterExecute(SQLConnection connection) {
     }
 
     /**
