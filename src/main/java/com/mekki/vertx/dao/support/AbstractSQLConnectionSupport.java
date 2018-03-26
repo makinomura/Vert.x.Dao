@@ -1,5 +1,6 @@
 package com.mekki.vertx.dao.support;
 
+import com.mekki.vertx.dao.support.exception.UnhandledException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Handler;
 import io.vertx.ext.jdbc.impl.JDBCClientImpl;
@@ -9,8 +10,6 @@ import io.vertx.ext.sql.UpdateResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.function.Consumer;
-
 /**
  * Created by Mekki on 2018/3/23.
  * 对DAO层SQL连接操作进行封装
@@ -18,8 +17,20 @@ import java.util.function.Consumer;
 public abstract class AbstractSQLConnectionSupport {
 
     private static Logger logger = LoggerFactory.getLogger(AbstractSQLConnectionSupport.class);
+    protected Handler<Exception> defaultExceptionHandler = ex -> {
+        throw new UnhandledException(ex);
+    };
 
     public abstract JDBCClientImpl getSqlClient();
+
+    /**
+     * 设置异常处理
+     *
+     * @param eh 异常处理回调
+     */
+    public void onException(Handler<Exception> eh) {
+        defaultExceptionHandler = eh;
+    }
 
     /**
      * 获取Sql链接
@@ -31,7 +42,7 @@ public abstract class AbstractSQLConnectionSupport {
             requireSucceed(connectionHandler);
             SQLConnection connection = connectionHandler.result();
 
-            logger.info("establish : {}",connection.toString());
+            logger.info("establish : {}", connection.toString());
             handler.handle(connection);
         });
     }
@@ -49,19 +60,18 @@ public abstract class AbstractSQLConnectionSupport {
     }
 
     /**
-     * 确保SQL连接发生异常时能够关闭
+     * 处理异常
      *
-     * @param action     操作
-     * @param handler    操作
-     * @param connection SQL连接
-     * @param <E>        实体类型
+     * @param vh  操作
+     * @param <E> 实体类型
      */
-    protected <E> void closeSQLConnectionOnException(Consumer<E> action, E handler, SQLConnection connection) {
+    protected <E> boolean handleIfException(Handler<Void> vh) {
         try {
-            action.accept(handler);
+            vh.handle(null);
+            return true;
         } catch (Exception ex) {
-            closeSQLConnectionAfterExecute(connection);
-            throw new RuntimeException(ex);
+            defaultExceptionHandler.handle(ex);
+            return false;
         }
     }
 
@@ -75,9 +85,10 @@ public abstract class AbstractSQLConnectionSupport {
     protected void doQuery(String sql, Handler<ResultSet> handler) {
         getSQLConnection(connection -> {
             connection.query(sql, asyncResult -> {
-                closeSQLConnectionOnException(this::requireSucceed, asyncResult, connection);
-                closeSQLConnectionOnException(handler::handle, asyncResult.result(), connection);
-
+                handleIfException(v -> {
+                    requireSucceed(asyncResult);
+                    handler.handle(asyncResult.result());
+                });
                 closeSQLConnectionAfterExecute(connection);
             });
         });
@@ -92,9 +103,10 @@ public abstract class AbstractSQLConnectionSupport {
     protected void doUpdate(String sql, Handler<UpdateResult> handler) {
         getSQLConnection(connection -> {
             connection.update(sql, asyncResult -> {
-                closeSQLConnectionOnException(this::requireSucceed, asyncResult, connection);
-                closeSQLConnectionOnException(handler::handle, asyncResult.result(), connection);
-
+                handleIfException(v -> {
+                    requireSucceed(asyncResult);
+                    handler.handle(asyncResult.result());
+                });
                 closeSQLConnectionAfterExecute(connection);
             });
         });

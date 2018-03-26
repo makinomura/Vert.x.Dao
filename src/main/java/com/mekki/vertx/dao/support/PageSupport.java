@@ -25,7 +25,7 @@ public class PageSupport<E> {
 
     private String orderBy;
 
-    public PageSupport(Integer page, Integer size) {
+    private PageSupport(Integer page, Integer size) {
         this.page = page;
         this.size = size;
 
@@ -36,9 +36,30 @@ public class PageSupport<E> {
         startRow = (page - 1) * size;
     }
 
-    public PageSupport(Integer page, Integer size, String orderBy) {
+    private PageSupport(Integer page, Integer size, String orderBy) {
         this(page, size);
         this.orderBy = orderBy;
+    }
+
+    /**
+     * 构造分页对象
+     * @param page 页码
+     * @param size 数量
+     * @return
+     */
+    public static <E> PageSupport<E> of(Integer page, Integer size) {
+        return new PageSupport<>(page, size);
+    }
+
+    /**
+     * 构造分页对象
+     * @param page 页码
+     * @param size 数量
+     * @param orderBy 排序
+     * @return
+     */
+    public static <E> PageSupport<E> of(Integer page, Integer size, String orderBy) {
+        return new PageSupport<>(page, size, orderBy);
     }
 
     public Long getTotal() {

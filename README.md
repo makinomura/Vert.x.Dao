@@ -44,6 +44,9 @@ SimpleDao for Vert.x project
 
 ```java
     Dao.createTransactional(vertx, jdbcConfig, dao ->
+    
+        //SET exception handler
+        dao.onException(ctx::fail);
 
         User user = new User();
         user.setName("maki");
