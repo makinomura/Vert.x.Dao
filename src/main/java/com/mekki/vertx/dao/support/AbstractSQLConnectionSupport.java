@@ -65,13 +65,11 @@ public abstract class AbstractSQLConnectionSupport {
      * @param vh  操作
      * @param <E> 实体类型
      */
-    protected <E> boolean handleIfException(Handler<Void> vh) {
+    protected <E> void handleIfException(Handler<Void> vh) {
         try {
             vh.handle(null);
-            return true;
         } catch (Exception ex) {
             defaultExceptionHandler.handle(ex);
-            return false;
         }
     }
 
