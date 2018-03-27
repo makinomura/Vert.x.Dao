@@ -81,10 +81,10 @@ public abstract class AbstractSQLConnectionSupport {
      */
     protected void doQuery(String sql, Handler<ResultSet> handler) {
         getSQLConnection(connection -> {
-            connection.query(sql, asyncResult -> {
+            connection.query(sql, ar -> {
                 handleIfException(v -> {
-                    requireSucceed(asyncResult);
-                    handler.handle(asyncResult.result());
+                    requireSucceed(ar);
+                    handler.handle(ar.result());
                 });
                 closeSQLConnectionAfterExecute(connection);
             });
@@ -99,10 +99,10 @@ public abstract class AbstractSQLConnectionSupport {
      */
     protected void doUpdate(String sql, Handler<UpdateResult> handler) {
         getSQLConnection(connection -> {
-            connection.update(sql, asyncResult -> {
+            connection.update(sql, ar -> {
                 handleIfException(v -> {
-                    requireSucceed(asyncResult);
-                    handler.handle(asyncResult.result());
+                    requireSucceed(ar);
+                    handler.handle(ar.result());
                 });
                 closeSQLConnectionAfterExecute(connection);
             });
